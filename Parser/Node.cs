@@ -28,6 +28,17 @@ public record NDeclarations (NVarDecl[] Vars) : Node {
 public record NVarDecl (Token Name, NType Type) : Node {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
+
+// Declares a variable (with a type)
+public record NProcDecl (Token Name, NVarDecl[] Vars, NBlock Block) : Node {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
+// Declares a variable (with a type)
+public record NFuncDecl (Token Name, NVarDecl[] Vars, NType Type, NBlock Block) : Node {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
 #endregion
 
 #region Statements -------------------------------------------------------------
@@ -44,11 +55,42 @@ public record NWriteStmt (bool NewLine, NExpr[] Exprs) : NStmt {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 
+// A Read statement
+public record NReadStmt (Token Name, Token[] Names) : NStmt {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
 // An assignment statement
 public record NAssignStmt (Token Name, NExpr Expr) : NStmt {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
+
+// A Call statement
+public record NCallStmt (Token Name, NExpr[] Exprs) : NStmt {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
+// An IF statement
+public record NIfStmt (NExpr Expr, NStmt[] Stmts) : NStmt {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
+// A WHILE statement
+public record NWhileStmt (NExpr Expr, NStmt Stmt) : NStmt {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
+// A REPEAT statement
+public record NRepeatStmt (NStmt[] Stmts, NExpr Expr) : NStmt {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
+// A FOR statement
+public record NForStmt (Token Name, bool IsTo, NExpr[] Exprs, NStmt NStmt) : NStmt {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
 #endregion
+
 
 #region Expression nodes -------------------------------------------------------
 // Base class for expression nodes
@@ -78,6 +120,11 @@ public record NBinary (NExpr Left, Token Op, NExpr Right) : NExpr {
 
 // A function-call node in an expression
 public record NFnCall (Token Name, NExpr[] Params) : NExpr {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
+// A Argument List of expressions
+public record NArgList (NExpr[] Exprs) : NExpr {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 #endregion

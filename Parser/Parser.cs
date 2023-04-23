@@ -1,6 +1,10 @@
 ﻿// ⓅⓈⒾ  ●  Pascal Language System  ●  Academy'23
 // Parser.cs ~ Recursive descent parser for Pascal Grammar
 // ─────────────────────────────────────────────────────────────────────────────
+using PSI;
+using System.Collections.Generic;
+using System.Linq.Expressions;
+
 namespace PSI;
 using static Token.E;
 using static NType;
@@ -57,8 +61,40 @@ public class Parser {
          STRING => String, _ => Char,
       };
    }
+   //proc-decl = "procedure" IDENT paramlist; block ";" .
+   NProcDecl ProcDecl () {
+      Expect (PROCEDURE);
+      var name = Expect (IDENT);
+      var para = ParamList ();
+      var block = Block ();
+      Expect (SEMI);
+      return new (name, para, block);
+   }
+
+   //func-decl = "function" IDENT paramlist ":" type; block ";" .
+   NFuncDecl FuncDecl () {
+      Expect (FUNCTION);
+      var name = Expect (IDENT);
+      var para = ParamList ();
+      Expect (COLON);
+      var type = Type ();
+      var block = Block ();
+      Expect (SEMI);
+      return new (name, para, type, block);
+   }
+
+
+   //paramlist = "(" var-decl { "," var-decl} ")"
+   NVarDecl[] ParamList () {
+      Expect (OPEN);
+      List<NVarDecl> parameters = new ();
+      parameters.Add (VarDecls ()[0]);
+      while (Match (COMMA)) parameters.Add (VarDecls ()[0]);
+      Expect (CLOSE);
+      return parameters.ToArray ();
+   }
    #endregion
-   
+
    #region Statements ---------------------------------------
    // statement         =  write-stmt | read-stmt | assign-stmt | call-stmt |
    //                      goto-stmt | if-stmt | while-stmt | repeat-stmt |
@@ -68,6 +104,8 @@ public class Parser {
       if (Match (IDENT)) {
          if (Match (ASSIGN)) return AssignStmt ();
       }
+      if (Match (READ)) return ReadStmt ();
+      if (Match(CALL)) return CallStmt ();
       Unexpected ();
       return null!;
    }
@@ -84,9 +122,61 @@ public class Parser {
    NWriteStmt WriteStmt () 
       => new (Prev.Kind == WRITELN, ArgList ());
 
+   //read-stmt = "read" "(" identlist ")" .
+   NReadStmt ReadStmt ()
+      => new (Prev, IdentList ());
+
+
    // assign-stmt = IDENT ":=" expr .
    NAssignStmt AssignStmt () 
       => new (PrevPrev, Expression ());
+
+   // call-stmt = IDENT arglist .
+   NCallStmt CallStmt ()
+      => new (Prev, ArgList ());
+
+// if-stmt = "if" expression "then" statement["else" statement] .
+   NIfStmt IfStmt () {
+      Expect (IF);
+      var expr = Expression();
+      Expect (THEN);
+      List<NStmt> stmt = new () {Stmt () };
+      while (Match (ELSE)) stmt.Add(Stmt());
+      return new (expr, stmt.ToArray());
+   }
+
+   // while-stmt = "while" expression "do" statement.
+   NWhileStmt WhilefStmt () {
+      Expect (WHILE);
+      var expr = Expression ();
+      Expect (DO);
+      var stmt = Stmt ();
+      return new (expr, stmt);
+   }
+
+   //repeat-stmt = "repeat" statement { ";" statement} "until" expression.
+   NRepeatStmt RepeatfStmt () {
+      List<NStmt> stmts = new ();
+      Expect (REPEAT);
+      stmts.Add(Stmt ());
+      if (Match (SEMI)) stmts.Add (Stmt ());
+      Expect (UNTIL);
+      var expr = Expression ();
+      return new (stmts.ToArray(), expr);
+   }
+
+   //for-stmt = "for" IDENT ":=" expression ("to" | "downto") expression "do" statement.
+   NForStmt ForfStmt () {
+      List<NExpr> exprs = new ();
+      Expect (FOR);
+      var name = Expect (IDENT);
+      Expect (ASSIGN); 
+      exprs.Add(Expression ());
+      exprs.Add (Expression ());
+      Expect (DO);
+      var stmt = Stmt ();
+      return new (name, Prev.Kind == TO, exprs.ToArray(), stmt);
+   }
    #endregion
 
    #region Expression --------------------------------------
