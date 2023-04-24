@@ -1,4 +1,4 @@
-﻿// ⓅⓈⒾ  ●  Pascal Language System  ●  Academy'23
+// ⓅⓈⒾ  ●  Pascal Language System  ●  Academy'23
 // Parser.cs ~ Recursive descent parser for Pascal Grammar
 // ─────────────────────────────────────────────────────────────────────────────
 using PSI;
@@ -35,7 +35,7 @@ public class Parser {
    // declarations = [var-decls] [procfn-decls] .
    NDeclarations Declarations () {
       List<NVarDecl> vars = new ();
-      if (Match (VAR)) 
+      if (Match (VAR))
          do { vars.AddRange (VarDecls ()); Expect (SEMI); } while (Peek (IDENT));
       return new (vars.ToArray ());
    }
@@ -44,7 +44,7 @@ public class Parser {
    Token[] IdentList () {
       List<Token> names = new ();
       do { names.Add (Expect (IDENT)); } while (Match (COMMA));
-      return names.ToArray (); 
+      return names.ToArray ();
    }
 
    // var-decl = ident-list ":" type
@@ -57,30 +57,28 @@ public class Parser {
    NType Type () {
       var token = Expect (INTEGER, REAL, BOOLEAN, STRING, CHAR);
       return token.Kind switch {
-         INTEGER => Int, REAL => Real, BOOLEAN => Bool, 
-         STRING => String, _ => Char,
+         INTEGER => Int,
+         REAL => Real,
+         BOOLEAN => Bool,
+         STRING => String,
+         _ => Char,
       };
    }
    //proc-decl = "procedure" IDENT paramlist; block ";" .
    NProcDecl ProcDecl () {
       Expect (PROCEDURE);
-      var name = Expect (IDENT);
-      var para = ParamList ();
-      var block = Block ();
+      var decl = new NProcDecl (Expect (IDENT), ParamList (), Block ());
       Expect (SEMI);
-      return new (name, para, block);
+      return decl;
    }
 
    //func-decl = "function" IDENT paramlist ":" type; block ";" .
    NFuncDecl FuncDecl () {
       Expect (FUNCTION);
-      var name = Expect (IDENT);
-      var para = ParamList ();
+      var decl = new NFuncDecl (Expect (IDENT), ParamList (), Expect (SEMI), Type(), Block ());
       Expect (COLON);
-      var type = Type ();
-      var block = Block ();
       Expect (SEMI);
-      return new (name, para, type, block);
+      return decl;
    }
 
 
@@ -105,7 +103,7 @@ public class Parser {
          if (Match (ASSIGN)) return AssignStmt ();
       }
       if (Match (READ)) return ReadStmt ();
-      if (Match(CALL)) return CallStmt ();
+      if (Match (CALL)) return CallStmt ();
       Unexpected ();
       return null!;
    }
@@ -119,34 +117,34 @@ public class Parser {
    }
 
    // write-stmt =  ( "writeln" | "write" ) arglist .
-   NWriteStmt WriteStmt () 
+   NWriteStmt WriteStmt ()
       => new (Prev.Kind == WRITELN, ArgList ());
 
    //read-stmt = "read" "(" identlist ")" .
    NReadStmt ReadStmt ()
-      => new (Prev, IdentList ());
+      => new (IdentList ());
 
 
    // assign-stmt = IDENT ":=" expr .
-   NAssignStmt AssignStmt () 
+   NAssignStmt AssignStmt ()
       => new (PrevPrev, Expression ());
 
    // call-stmt = IDENT arglist .
    NCallStmt CallStmt ()
       => new (Prev, ArgList ());
 
-// if-stmt = "if" expression "then" statement["else" statement] .
+   // if-stmt = "if" expression "then" statement["else" statement] .
    NIfStmt IfStmt () {
       Expect (IF);
-      var expr = Expression();
+      var condition = Expression ();
       Expect (THEN);
-      List<NStmt> stmt = new () {Stmt () };
-      while (Match (ELSE)) stmt.Add(Stmt());
-      return new (expr, stmt.ToArray());
+      var ifpart = Stmt ();
+      var elsepart = Match (ELSE)? Stmt (): null;
+      return new (condition, ifpart, elsepart);
    }
 
    // while-stmt = "while" expression "do" statement.
-   NWhileStmt WhilefStmt () {
+   NWhileStmt WhileStmt () {
       Expect (WHILE);
       var expr = Expression ();
       Expect (DO);
@@ -155,39 +153,39 @@ public class Parser {
    }
 
    //repeat-stmt = "repeat" statement { ";" statement} "until" expression.
-   NRepeatStmt RepeatfStmt () {
+   NRepeatStmt RepeatStmt () {
       List<NStmt> stmts = new ();
       Expect (REPEAT);
-      stmts.Add(Stmt ());
+      stmts.Add (Stmt ());
       if (Match (SEMI)) stmts.Add (Stmt ());
       Expect (UNTIL);
       var expr = Expression ();
-      return new (stmts.ToArray(), expr);
+      return new (stmts.ToArray (), expr);
    }
 
    //for-stmt = "for" IDENT ":=" expression ("to" | "downto") expression "do" statement.
-   NForStmt ForfStmt () {
-      List<NExpr> exprs = new ();
+   NForStmt ForStmt () {
       Expect (FOR);
-      var name = Expect (IDENT);
-      Expect (ASSIGN); 
-      exprs.Add(Expression ());
-      exprs.Add (Expression ());
+      var var = Expect (IDENT);
+      Expect (ASSIGN);
+      var start = Expression ();
+      bool isto = Match(TO);
+      var end = Expression ();
       Expect (DO);
-      var stmt = Stmt ();
-      return new (name, Prev.Kind == TO, exprs.ToArray(), stmt);
+      var body = Stmt ();
+      return new (var, start, isto, end, body);
    }
    #endregion
 
    #region Expression --------------------------------------
    // expression = equality .
-   NExpr Expression () 
+   NExpr Expression ()
       => Equality ();
 
    // equality = equality = comparison [ ("=" | "<>") comparison ] .
    NExpr Equality () {
       var expr = Comparison ();
-      if (Match (EQ, NEQ)) 
+      if (Match (EQ, NEQ))
          expr = new NBinary (expr, Prev, Comparison ());
       return expr;
    }
@@ -203,7 +201,7 @@ public class Parser {
    // term = factor { ( "+" | "-" | "or" ) factor } .
    NExpr Term () {
       var expr = Factor ();
-      while  (Match (ADD, SUB, OR)) 
+      while (Match (ADD, SUB, OR))
          expr = new NBinary (expr, Prev, Factor ());
       return expr;
    }
@@ -211,7 +209,7 @@ public class Parser {
    // factor = unary { ( "*" | "/" | "and" | "mod" ) unary } .
    NExpr Factor () {
       var expr = Unary ();
-      while (Match (MUL, DIV, AND, MOD)) 
+      while (Match (MUL, DIV, AND, MOD))
          expr = new NBinary (expr, Prev, Unary ());
       return expr;
    }
@@ -256,7 +254,7 @@ public class Parser {
    }
 
    Token Expect (params Token.E[] kinds) {
-      if (!Match (kinds)) 
+      if (!Match (kinds))
          Throw ($"Expecting {string.Join (" or ", kinds)}");
       return mPrevious;
    }
@@ -268,7 +266,7 @@ public class Parser {
    // Match and consume a token on match
    bool Match (params Token.E[] kinds) {
       if (kinds.Contains (mToken.Kind)) {
-         mPrevPrev = mPrevious; mPrevious = mToken; 
+         mPrevPrev = mPrevious; mPrevious = mToken;
          mToken = mTokenizer.Next ();
          return true;
       }
