@@ -1,4 +1,4 @@
-﻿// ⓅⓈⒾ  ●  Pascal Language System  ●  Academy'23
+// ⓅⓈⒾ  ●  Pascal Language System  ●  Academy'23
 // Node.cs ~ All the syntax tree Nodes
 // ─────────────────────────────────────────────────────────────────────────────
 namespace PSI;
@@ -35,7 +35,7 @@ public record NProcDecl (Token Name, NVarDecl[] Vars, NBlock Block) : Node {
 }
 
 // Declares a variable (with a type)
-public record NFuncDecl (Token Name, NVarDecl[] Vars, NType Type, NBlock Block) : Node {
+public record NFuncDecl (Token Keyword, NVarDecl[] Vars, Token Semi, NType Type, NBlock Block) : Node {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 
@@ -56,7 +56,7 @@ public record NWriteStmt (bool NewLine, NExpr[] Exprs) : NStmt {
 }
 
 // A Read statement
-public record NReadStmt (Token Name, Token[] Names) : NStmt {
+public record NReadStmt (Token[] Names) : NStmt {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 
@@ -71,7 +71,7 @@ public record NCallStmt (Token Name, NExpr[] Exprs) : NStmt {
 }
 
 // An IF statement
-public record NIfStmt (NExpr Expr, NStmt[] Stmts) : NStmt {
+public record NIfStmt (NExpr Condition, NStmt IfPart, NStmt? ElsePart) : NStmt {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 
@@ -86,7 +86,7 @@ public record NRepeatStmt (NStmt[] Stmts, NExpr Expr) : NStmt {
 }
 
 // A FOR statement
-public record NForStmt (Token Name, bool IsTo, NExpr[] Exprs, NStmt NStmt) : NStmt {
+public record NForStmt (Token Var, NExpr Start, bool Ascending, NExpr End, NStmt Body) : NStmt {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 #endregion
