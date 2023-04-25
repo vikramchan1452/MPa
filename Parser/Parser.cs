@@ -178,7 +178,7 @@ public class Parser {
    #endregion
 
    #region Expression --------------------------------------
-   // expression = equality .
+   // expression = equality ..
    NExpr Expression ()
       => Equality ();
 
