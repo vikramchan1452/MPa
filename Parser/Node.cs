@@ -29,13 +29,8 @@ public record NVarDecl (Token Name, NType Type) : Node {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 
-// Declares a variable (with a type)
-public record NProcDecl (Token Name, NVarDecl[] Vars, NBlock Block) : Node {
-   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
-}
-
-// Declares a variable (with a type)
-public record NFuncDecl (Token Keyword, NVarDecl[] Vars, Token Semi, NType Type, NBlock Block) : Node {
+// Declares a procedure or function
+public record NDecl (Token Keyword, NVarDecl[] Vars, Token? Semi, NType? Type, NBlock Block) : Node {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 
@@ -56,7 +51,7 @@ public record NWriteStmt (bool NewLine, NExpr[] Exprs) : NStmt {
 }
 
 // A Read statement
-public record NReadStmt (Token[] Names) : NStmt {
+public record NReadStmt (Token[] Name) : NStmt {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 

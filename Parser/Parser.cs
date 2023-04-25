@@ -65,17 +65,20 @@ public class Parser {
       };
    }
    //proc-decl = "procedure" IDENT paramlist; block ";" .
-   NProcDecl ProcDecl () {
+   NDecl ProcDecl () {
       Expect (PROCEDURE);
-      var decl = new NProcDecl (Expect (IDENT), ParamList (), Block ());
+      var semi = PrevPrev.Kind == PROCEDURE ? Expect (SEMI) : null;
+      var t = Type ();
+      var type =  Prev.Kind = SEMI ? t : null;
+      var decl = new NDecl (Expect (IDENT), ParamList (), semi, type, Block ());
       Expect (SEMI);
       return decl;
    }
 
    //func-decl = "function" IDENT paramlist ":" type; block ";" .
-   NFuncDecl FuncDecl () {
+   NDecl FuncDecl () {
       Expect (FUNCTION);
-      var decl = new NFuncDecl (Expect (IDENT), ParamList (), Expect (SEMI), Type(), Block ());
+      var decl = new NDecl (Expect (IDENT), ParamList (), Expect (SEMI), Type(), Block ());
       Expect (COLON);
       Expect (SEMI);
       return decl;

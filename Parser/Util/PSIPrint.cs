@@ -29,20 +29,20 @@ public class PSIPrint : Visitor<StringBuilder> {
    public override StringBuilder Visit (NVarDecl d)
       => NWrite ($"{d.Name} : {d.Type}");
 
-   public override StringBuilder Visit (NProcDecl d) {
-      Write ($"procedure {d.Name} (");
-      for (int i = 0; i < d.Vars.Length; i++) {
-         if (i > 0) Write (", ");
-         d.Vars[i].Accept (this);
-      }
-      Write (")");
+   //public override StringBuilder Visit (NDecl f) {
+   //   Write ($"procedure {d.Name} (");
+   //   for (int i = 0; i < d.Vars.Length; i++) {
+   //      if (i > 0) Write (", ");
+   //      d.Vars[i].Accept (this);
+   //   }
+   //   Write (")");
 
-      Visit (d.Block); Write (";");
-      return S;
-   }
+   //   Visit (d.Block); Write (";");
+   //   return S;
+   //}
 
-   public override StringBuilder Visit (NFuncDecl d) {
-      Write ($"function {d.Name} (");
+   public override StringBuilder Visit (NDecl d) {
+      Write ($"function {d.Keyword} (");
       for (int i = 0; i < d.Vars.Length; i++) {
          if (i > 0) Write (", ");
          d.Vars[i].Accept (this);
@@ -76,9 +76,9 @@ public class PSIPrint : Visitor<StringBuilder> {
       return S;
    }
 
-   public override StringBuilder Visit (NIfStmt i) {
-      Write ("if "); N++; i.Expr.Accept (this); Write (" then"); Visit (i.Stmts); N--;
-      NWrite ("else"); N++; Visit (i.Stmts); N--;
+   public override StringBuilder Visit (NIfStmt i) { //NExpr Condition, NStmt IfPart, NStmt? ElsePart)
+      Write ("if "); N++; i.Condition.Accept (this); Write (" then"); NWrite (""); Visit (i.IfPart); N--;
+      NWrite ("else"); N++; Visit (i.ElsePart); N--;
       return S;
    }
 
@@ -99,11 +99,11 @@ public class PSIPrint : Visitor<StringBuilder> {
       return S;
    }
 
-   public override StringBuilder Visit (NForStmt f) {
+   public override StringBuilder Visit (NForStmt f) {  //Token Var, NExpr Start, bool Ascending, NExpr End, NStmt Body
       Write ("for "); N++;
-      Write ($"{f.Name} := "); Visit (f.Exprs); Write (f.IsTo ? "to " : "downto ");
-      Visit (f.Exprs);
-      Write ("do "); NWrite (""); Visit (f.Exprs); N--;
+      Write ($"{f.Var} := "); Visit (f.Start); Write (f.Ascending ? "to " : "downto ");
+      Visit (f.End);
+      Write ("do "); NWrite (""); Visit (f.Body); N--;
       return S;
    }
 

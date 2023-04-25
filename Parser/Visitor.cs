@@ -11,8 +11,7 @@ public abstract class Visitor<T> {
    public abstract T Visit (NBlock b);
    public abstract T Visit (NDeclarations d);
    public abstract T Visit (NVarDecl d);
-   public abstract T Visit (NProcDecl d);
-   public abstract T Visit (NFuncDecl d);
+   public abstract T Visit (NDecl d);
 
    public abstract T Visit (NCompoundStmt b);
    public abstract T Visit (NReadStmt b);
