@@ -20,7 +20,7 @@ public record NBlock (NDeclarations Decls, NCompoundStmt Body) : Node {
 }
 
 // The declarations section precedes the body of every block
-public record NDeclarations (NVarDecl[] Vars) : Node {
+public record NDeclarations (NVarDecl[] Vars, NProcFnDecl[] ProcFns) : Node {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 
@@ -30,7 +30,7 @@ public record NVarDecl (Token Name, NType Type) : Node {
 }
 
 // Declares a procedure or function
-public record NDecl (Token Keyword, NVarDecl[] Vars, Token? Semi, NType? Type, NBlock Block) : Node {
+public record NProcFnDecl (bool IsProc, Token Keyword, NVarDecl[] Vars, Token? Semi, NType? Type, NBlock Block) : Node {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 

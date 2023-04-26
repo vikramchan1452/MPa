@@ -34,10 +34,17 @@ public class Parser {
 
    // declarations = [var-decls] [procfn-decls] .
    NDeclarations Declarations () {
-      List<NVarDecl> vars = new ();
-      if (Match (VAR))
+      List<NVarDecl>? vars = new ();
+      List<NProcFnDecl>? procfns = new ();
+      if (Match (VAR)) {
          do { vars.AddRange (VarDecls ()); Expect (SEMI); } while (Peek (IDENT));
-      return new (vars.ToArray ());
+         return new (vars.ToArray (), procfns.ToArray ());
+      }
+      else {
+         procfns.AddRange (ProcFnDecls ());
+         return new (vars.ToArray (), procfns.ToArray ());
+      }
+
    }
 
    // ident-list = IDENT { "," IDENT }
@@ -52,8 +59,8 @@ public class Parser {
       var names = IdentList (); Expect (COLON); var type = Type ();
       return names.Select (a => new NVarDecl (a, type)).ToArray ();
    }
-
-   // type = integer | real | boolean | string | char
+   
+   // type
    NType Type () {
       var token = Expect (INTEGER, REAL, BOOLEAN, STRING, CHAR);
       return token.Kind switch {
@@ -64,26 +71,24 @@ public class Parser {
          _ => Char,
       };
    }
+
    //proc-decl = "procedure" IDENT paramlist; block ";" .
-   NDecl ProcDecl () {
-      Expect (PROCEDURE);
-      var semi = PrevPrev.Kind == PROCEDURE ? Expect (SEMI) : null;
-      var t = Type ();
-      var type =  Prev.Kind = SEMI ? t : null;
-      var decl = new NDecl (Expect (IDENT), ParamList (), semi, type, Block ());
-      Expect (SEMI);
-      return decl;
-   }
-
    //func-decl = "function" IDENT paramlist ":" type; block ";" .
-   NDecl FuncDecl () {
-      Expect (FUNCTION);
-      var decl = new NDecl (Expect (IDENT), ParamList (), Expect (SEMI), Type(), Block ());
-      Expect (COLON);
-      Expect (SEMI);
-      return decl;
+   NProcFnDecl[] ProcFnDecls () {
+      List<NProcFnDecl> decls = new ();
+      while (Match (PROCEDURE)) {
+         var semi = PrevPrev.Kind == PROCEDURE ? Expect (SEMI) : null;
+         var type = Prev.Kind == SEMI ? Type () : Void;
+         decls.Add(new NProcFnDecl (true, Expect (IDENT), ParamList (), semi, type, Block ()));
+         Expect (SEMI);
+      }
+      while (Match (FUNCTION)) {
+         decls.Add(new NProcFnDecl (false, Expect (IDENT), ParamList (), Expect (SEMI), Type (), Block ()));
+         Expect (COLON);
+         Expect (SEMI);
+      }
+      return decls.ToArray ();
    }
-
 
    //paramlist = "(" var-decl { "," var-decl} ")"
    NVarDecl[] ParamList () {
@@ -107,6 +112,10 @@ public class Parser {
       }
       if (Match (READ)) return ReadStmt ();
       if (Match (CALL)) return CallStmt ();
+      if (Match (IF)) return IfStmt ();
+      if (Match (REPEAT)) return RepeatStmt ();
+      if (Match (WHILE)) return WhileStmt ();
+      if (Match (FOR)) return ForStmt ();
       Unexpected ();
       return null!;
    }
@@ -138,7 +147,7 @@ public class Parser {
 
    // if-stmt = "if" expression "then" statement["else" statement] .
    NIfStmt IfStmt () {
-      Expect (IF);
+      //Expect (IF);
       var condition = Expression ();
       Expect (THEN);
       var ifpart = Stmt ();
@@ -148,7 +157,7 @@ public class Parser {
 
    // while-stmt = "while" expression "do" statement.
    NWhileStmt WhileStmt () {
-      Expect (WHILE);
+      //Expect (WHILE);
       var expr = Expression ();
       Expect (DO);
       var stmt = Stmt ();
@@ -158,7 +167,7 @@ public class Parser {
    //repeat-stmt = "repeat" statement { ";" statement} "until" expression.
    NRepeatStmt RepeatStmt () {
       List<NStmt> stmts = new ();
-      Expect (REPEAT);
+      //Expect (REPEAT);
       stmts.Add (Stmt ());
       if (Match (SEMI)) stmts.Add (Stmt ());
       Expect (UNTIL);
@@ -168,7 +177,7 @@ public class Parser {
 
    //for-stmt = "for" IDENT ":=" expression ("to" | "downto") expression "do" statement.
    NForStmt ForStmt () {
-      Expect (FOR);
+      //Expect (FOR);
       var var = Expect (IDENT);
       Expect (ASSIGN);
       var start = Expression ();
