@@ -1,6 +1,8 @@
 ﻿// ⓅⓈⒾ  ●  Pascal Language System  ●  Academy'23
 // PSIPrint.cs ~ Prints a PSI syntax tree in Pascal format
 // ─────────────────────────────────────────────────────────────────────────────
+using System.Net.WebSockets;
+
 namespace PSI;
 
 public class PSIPrint : Visitor<StringBuilder> {
@@ -14,6 +16,13 @@ public class PSIPrint : Visitor<StringBuilder> {
       => Visit (b.Declarations, b.Body);
 
    public override StringBuilder Visit (NDeclarations d) {
+      if (d.Consts.Length > 0) {
+         NWrite ("const"); N++;
+         foreach (var g in d.Consts.GroupBy (a => a.Name))
+            NWrite ($"{g.Select (a => a.Name)} = {g.Key};");
+         N--;
+      }
+
       if (d.Vars.Length > 0) {
          NWrite ("var"); N++;
          foreach (var g in d.Vars.GroupBy (a => a.Type))
@@ -25,7 +34,6 @@ public class PSIPrint : Visitor<StringBuilder> {
    }
 
    public override StringBuilder Visit (NConstDecl c) {
-      NWrite ("const"); N++;
       NWrite ($"{c.Name} = {c.Value};");
       return S;
    }
