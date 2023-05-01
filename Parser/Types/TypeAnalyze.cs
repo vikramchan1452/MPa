@@ -101,7 +101,7 @@ public class TypeAnalyze : Visitor<NType> {
    }
     
    public override NType Visit (NCallStmt c) {
-      if (mSymbols.Find (c.Name.Text) is NVarDecl)
+      if (mSymbols.Find (c.Name.Text) is NFnDecl)
          Visit (c.Params);
       throw new ParseException (c.Name, "Unknown variable");
    }
@@ -154,12 +154,9 @@ public class TypeAnalyze : Visitor<NType> {
       throw new ParseException (d.Name, "Unknown variable");
    }
   
-   public override NType Visit (NFnCall f) {
-      if (mSymbols.Find (f.Name.Text) is not NVarDecl)
-         Visit (f.Params);
-      throw new ParseException (f.Name, "Unknown function");
-   }
-
+   public override NType Visit (NFnCall f) 
+      => Visit (f.Params);
+   
    public override NType Visit (NTypeCast c) {
       c.Expr.Accept (this); return c.Type;
    }

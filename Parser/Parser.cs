@@ -57,6 +57,7 @@ public class Parser {
       while (Match(IDENT)) {
          var ident = Expect (IDENT); Expect (EQ);
          Match (L_INTEGER, L_REAL, L_BOOLEAN, L_CHAR, L_STRING);
+         Expect (SEMI);
          var literal = new NLiteral (Prev);
          consts.Add (new NConstDecl (ident, literal));
       }
