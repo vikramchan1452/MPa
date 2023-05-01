@@ -2,6 +2,8 @@
 // TypeAnalyze.cs ~ Type checking, type coercion
 // ─────────────────────────────────────────────────────────────────────────────
 namespace PSI;
+
+using System.Linq;
 using static NType;
 using static Token.E;
 
@@ -26,6 +28,11 @@ public class TypeAnalyze : Visitor<NType> {
       Visit (d.Vars); return Visit (d.Funcs);
    }
 
+   public override NType Visit (NConstDecl c) {
+      mSymbols.Consts.Add (c);
+      return Void;
+   }
+
    public override NType Visit (NVarDecl d) {
       mSymbols.Vars.Add (d);
       return d.Type;
@@ -33,7 +40,12 @@ public class TypeAnalyze : Visitor<NType> {
 
    public override NType Visit (NFnDecl f) {
       mSymbols.Funcs.Add (f);
-      return f.Return;
+      if (mSymbols.Find (f.Name.Text) is not NVarDecl) {
+         Visit (f.Params);
+         f.Body?.Accept(this);
+         return f.Return;
+      }
+      throw new ParseException (f.Name, "Unknown function");
    }
    #endregion
 
@@ -72,9 +84,10 @@ public class TypeAnalyze : Visitor<NType> {
       f.Start.Accept (this); f.End.Accept (this); f.Body.Accept (this);
       return Void;
    }
-
+   
    public override NType Visit (NReadStmt r) {
-      throw new NotImplementedException ();
+      Visit ((IEnumerable<Node>)r.Vars[0]);
+      return Void;
    }
 
    public override NType Visit (NWhileStmt w) {
@@ -86,9 +99,11 @@ public class TypeAnalyze : Visitor<NType> {
       Visit (r.Stmts); r.Condition.Accept (this);
       return Void;
    }
-
+    
    public override NType Visit (NCallStmt c) {
-      throw new NotImplementedException ();
+      if (mSymbols.Find (c.Name.Text) is NVarDecl)
+         Visit (c.Params);
+      throw new ParseException (c.Name, "Unknown variable");
    }
    #endregion
 
@@ -138,9 +153,11 @@ public class TypeAnalyze : Visitor<NType> {
          return d.Type = v.Type;
       throw new ParseException (d.Name, "Unknown variable");
    }
-
+  
    public override NType Visit (NFnCall f) {
-      throw new NotImplementedException ();
+      if (mSymbols.Find (f.Name.Text) is not NVarDecl)
+         Visit (f.Params);
+      throw new ParseException (f.Name, "Unknown function");
    }
 
    public override NType Visit (NTypeCast c) {
@@ -150,6 +167,6 @@ public class TypeAnalyze : Visitor<NType> {
 
    NType Visit (IEnumerable<Node> nodes) {
       foreach (var node in nodes) node.Accept (this);
-      return NType.Void;
+      return Void;
    }
 }

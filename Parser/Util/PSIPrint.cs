@@ -24,6 +24,12 @@ public class PSIPrint : Visitor<StringBuilder> {
       return S;
    }
 
+   public override StringBuilder Visit (NConstDecl c) {
+      NWrite ("const"); N++;
+      NWrite ($"{c.Name} = {c.Value}");
+      return S;
+   }
+
    public override StringBuilder Visit (NVarDecl d)
       => NWrite ($"{d.Name} : {d.Type}");
 

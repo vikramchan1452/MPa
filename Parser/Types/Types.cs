@@ -9,6 +9,7 @@ using static NType;
 public enum NType { Unknown, Int, Real, Bool, String, Char, Error, Void }
 
 public class SymTable {
+   public List<NConstDecl> Consts = new ();
    public List<NVarDecl> Vars = new ();
    public List<NFnDecl> Funcs = new ();
    public SymTable? Parent;
