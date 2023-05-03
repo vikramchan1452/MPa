@@ -4,10 +4,15 @@
 namespace PSI;
 
 using System.Linq;
+using System.Net.Mail;
 using static NType;
 using static Token.E;
 
-public class TypeAnalyze : Visitor<NType> {
+//Same name used for a function and a variable, or a function and a const, or a const and a variable within a block - error ***
+//Correct interpretation of same variable name used in an inner block with a different type ***
+//Adding NTypeCast nodes before a function is called, on the parameters to the function ***
+
+public class TypeAnalyze : Visitor<NType> {  
    public TypeAnalyze () {
       mSymbols = SymTable.Root;
    }
@@ -29,20 +34,32 @@ public class TypeAnalyze : Visitor<NType> {
    }
 
    public override NType Visit (NConstDecl c) {
+      if (mSymbols.Consts.Contains(c)) throw new ParseException (c.Name, "Constant name already defined");
+      if (mSymbols.Find (c.Name.Text) is NVarDecl) throw new ParseException (c.Name, "Constant name already defined as variable");
+      if (mSymbols.Find (c.Name.Text) is NFnDecl) throw new ParseException (c.Name, "Constant name already defined as function");
       mSymbols.Consts.Add (c);
       return Void;
    }
 
    public override NType Visit (NVarDecl d) {
+      if (mSymbols.Vars.Contains (d)) throw new ParseException (d.Name, "Variable name already defined");
+      //if (mSymbols.Find (d.Name.Text) is NVarDecl v && d.Type == v.Type) throw new ParseException (d.Name, "Variable name already defined with same type");
+      //if (mSymbols.Find (d.Name.Text) is NConstDecl) throw new ParseException (d.Name, "Variable name already defined as constant");
+      //if (mSymbols.Find (d.Name.Text) is NFnDecl) throw new ParseException (d.Name, "Variable name already defined as function");
       mSymbols.Vars.Add (d);
       return d.Type;
    }
 
    public override NType Visit (NFnDecl f) {
-      mSymbols.Funcs.Add (f);
-      if (mSymbols.Find (f.Name.Text) is not NVarDecl) {
+      if (mSymbols.Funcs.Contains (f)) throw new ParseException (f.Name, "Function name already defined");
+      if (mSymbols.Find (f.Name.Text) is NConstDecl) throw new ParseException (f.Name, "Function name already defined as constant");
+      if (mSymbols.Find (f.Name.Text) is NVarDecl) throw new ParseException (f.Name, "Function name already defined as variable");
+      mSymbols = new SymTable { Parent = mSymbols };
+      mSymbols.Vars.Add (new NVarDecl (f.Name, f.Return));
+      if (mSymbols.Find (f.Name.Text) is not NFnDecl) {
          Visit (f.Params);
          f.Body?.Accept(this);
+         mSymbols = mSymbols.Parent;
          return f.Return;
       }
       throw new ParseException (f.Name, "Unknown function");
@@ -84,11 +101,9 @@ public class TypeAnalyze : Visitor<NType> {
       f.Start.Accept (this); f.End.Accept (this); f.Body.Accept (this);
       return Void;
    }
-   
-   public override NType Visit (NReadStmt r) {
-      Visit ((IEnumerable<Node>)r.Vars[0]);
-      return Void;
-   }
+
+   public override NType Visit (NReadStmt r) 
+      => Void; 
 
    public override NType Visit (NWhileStmt w) {
       w.Condition.Accept (this); w.Body.Accept (this);
@@ -102,8 +117,8 @@ public class TypeAnalyze : Visitor<NType> {
     
    public override NType Visit (NCallStmt c) {
       if (mSymbols.Find (c.Name.Text) is NFnDecl)
-         Visit (c.Params);
-      throw new ParseException (c.Name, "Unknown variable");
+         return Visit (c.Params);
+      throw new ParseException (c.Name, "Unknown procedure");
    }
    #endregion
 
@@ -149,13 +164,25 @@ public class TypeAnalyze : Visitor<NType> {
    }
 
    public override NType Visit (NIdentifier d) {
-      if (mSymbols.Find (d.Name.Text) is NVarDecl v) 
+      if (mSymbols.Find (d.Name.Text) is NVarDecl v )
          return d.Type = v.Type;
-      throw new ParseException (d.Name, "Unknown variable");
+      if (mSymbols.Find (d.Name.Text) is not NConstDecl c)
+         throw new ParseException (d.Name, "Unknown variable");
+      return Void;
    }
-  
-   public override NType Visit (NFnCall f) 
-      => Visit (f.Params);
+
+   public override NType Visit (NFnCall f) {
+      if (mSymbols.Find (f.Name.Text) is NFnDecl g) {
+         if (f.Params.Length != g.Params.Length) throw new ParseException (f.Name, $"Parameters count is mismatching. '{g.Name}' function requires {g.Params.Length} parameters.");
+         Visit (f.Params);
+         for (int i = 0; i < g.Params.Length; i++) {
+            f.Params[i] = AddTypeCast (f.Name, f.Params[i], f.Type);
+            if (f.Params[i].Type != g.Params[i].Type) throw new ParseException (f.Name, $"Parameter type doesn't match. Parameter No.{i + 1} should be a {g.Params[i].Type}, but {f.Params[i].Type} here.");
+         }
+         return f.Type = g.Return;
+      }
+      throw new ParseException (f.Name, "Unknown function");
+   }
    
    public override NType Visit (NTypeCast c) {
       c.Expr.Accept (this); return c.Type;

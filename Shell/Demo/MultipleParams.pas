@@ -2,7 +2,7 @@ program Multiple;
 
 procedure GetMin (i,j: integer; msg: string);
 var
-   a,b,c:integer;
+   a,b,b:integer;
 begin 
   Writeln (msg);
   if (i < j) then write (i) else write(j);

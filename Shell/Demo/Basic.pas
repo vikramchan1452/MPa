@@ -1,9 +1,10 @@
-program Basic;
+program CTest;
+const
+   pi = 3.14;
+   message = "Hello";
 var
-   i, j, k: integer;
-   pi, f: real;
-begin 
-   i := (3 + 4) * 2;
-   f := -pi * sin (3.5) + length ("hello");
-   writeln ("i=", i, ", f=", f);
+  i, j : integer;
+
+begin
+  write (message, ". pi = ", pi);
 end.

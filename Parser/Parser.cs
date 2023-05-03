@@ -54,12 +54,14 @@ public class Parser {
    // const-decl = IDENT "=" literal .
    NConstDecl[] ConstDecls () {
       List<NConstDecl> consts = new ();
-      while (Match(IDENT)) {
-         var ident = Expect (IDENT); Expect (EQ);
+      while (Peek (IDENT)) {
+         var ident = Expect (IDENT);
+         Expect (EQ);
          Match (L_INTEGER, L_REAL, L_BOOLEAN, L_CHAR, L_STRING);
          Expect (SEMI);
+         var type = Type ();
          var literal = new NLiteral (Prev);
-         consts.Add (new NConstDecl (ident, literal));
+         consts.Add (new NConstDecl (ident, literal, type));
       }
       return consts.ToArray ();
    }

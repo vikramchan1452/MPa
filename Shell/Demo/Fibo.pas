@@ -15,7 +15,7 @@ end;
 
 begin
   for i := 1 to 10 do begin
-    fib := Fibo (i);
+    fib := Fibo (i, i);
     WriteLn ("Fibo(", i, ") = ", fib);
   end;
 end.
