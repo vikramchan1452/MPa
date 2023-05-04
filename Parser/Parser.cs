@@ -59,9 +59,8 @@ public class Parser {
          Expect (EQ);
          Match (L_INTEGER, L_REAL, L_BOOLEAN, L_CHAR, L_STRING);
          Expect (SEMI);
-         var type = Type ();
-         var literal = new NLiteral (Prev);
-         consts.Add (new NConstDecl (ident, literal, type));
+         var literal = new NLiteral (PrevPrev);
+         consts.Add (new NConstDecl (ident, literal));
       }
       return consts.ToArray ();
    }

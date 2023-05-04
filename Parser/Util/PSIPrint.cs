@@ -18,8 +18,8 @@ public class PSIPrint : Visitor<StringBuilder> {
    public override StringBuilder Visit (NDeclarations d) {
       if (d.Consts.Length > 0) {
          NWrite ("const"); N++;
-         foreach (var g in d.Consts.GroupBy (a => a.Name))
-            NWrite ($"{g.Select (a => a.Name)} = {g.Key};");
+         foreach (var g in d.Consts)
+            NWrite ($"{g.Name} = {g.Value.Value};");
          N--;
       }
 
@@ -33,10 +33,8 @@ public class PSIPrint : Visitor<StringBuilder> {
       return S;
    }
 
-   public override StringBuilder Visit (NConstDecl c) {
-      NWrite ($"{c.Name} = {c.Value};");
-      return S;
-   }
+   public override StringBuilder Visit (NConstDecl c) 
+     => NWrite ($"{c.Name} = {c.Value};");
 
    public override StringBuilder Visit (NVarDecl d)
       => NWrite ($"{d.Name} : {d.Type}");

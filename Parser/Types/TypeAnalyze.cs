@@ -4,13 +4,12 @@
 namespace PSI;
 
 using System.Linq;
-using System.Net.Mail;
 using static NType;
 using static Token.E;
 
-//Same name used for a function and a variable, or a function and a const, or a const and a variable within a block - error ***
 //Correct interpretation of same variable name used in an inner block with a different type ***
-//Adding NTypeCast nodes before a function is called, on the parameters to the function ***
+//Adding NTypeCast nodes before a function is called, on the parameters to the function 
+//Checking a variable is assigned before it is actually read in a block
 
 public class TypeAnalyze : Visitor<NType> {  
    public TypeAnalyze () {
@@ -30,30 +29,32 @@ public class TypeAnalyze : Visitor<NType> {
    }
 
    public override NType Visit (NDeclarations d) {
-      Visit (d.Vars); return Visit (d.Funcs);
+      Visit (d.Consts); Visit (d.Vars); return Visit (d.Funcs);          
    }
 
    public override NType Visit (NConstDecl c) {
-      if (mSymbols.Consts.Contains(c)) throw new ParseException (c.Name, "Constant name already defined");
-      if (mSymbols.Find (c.Name.Text) is NVarDecl) throw new ParseException (c.Name, "Constant name already defined as variable");
-      if (mSymbols.Find (c.Name.Text) is NFnDecl) throw new ParseException (c.Name, "Constant name already defined as function");
-      mSymbols.Consts.Add (c);
-      return Void;
+      if (mSymbols.Consts.Contains(c)) throw new ParseException (c.Name, "Constant name has already defined in the same block");
+      if (mSymbols.Find (c.Name.Text) is NVarDecl) throw new ParseException (c.Name, "Constant name has already defined as variable in the same block");
+      if (mSymbols.Find (c.Name.Text) is NFnDecl) throw new ParseException (c.Name, "Constant name has already defined as function in the same block");
+      Visit (c.Value); mSymbols.Consts.Add (c); 
+      return c.Value.Type;
    }
 
    public override NType Visit (NVarDecl d) {
-      if (mSymbols.Vars.Contains (d)) throw new ParseException (d.Name, "Variable name already defined");
-      //if (mSymbols.Find (d.Name.Text) is NVarDecl v && d.Type == v.Type) throw new ParseException (d.Name, "Variable name already defined with same type");
-      //if (mSymbols.Find (d.Name.Text) is NConstDecl) throw new ParseException (d.Name, "Variable name already defined as constant");
-      //if (mSymbols.Find (d.Name.Text) is NFnDecl) throw new ParseException (d.Name, "Variable name already defined as function");
+      if (mSymbols.Vars.Contains (d)) throw new ParseException (d.Name, "Variable name has already defined in the same block");
+      if (mSymbols.Find (d.Name.Text) is NVarDecl && mSymbols.Parent?.Find (d.Name.Text) is NVarDecl v && d.Type == v.Type)
+         throw new ParseException (d.Name, "Variable name has already defined with same type in the outer block");
+      if (mSymbols.Find (d.Name.Text) is NConstDecl) throw new ParseException (d.Name, "Variable name has already defined as constant in the same block");
+      if (mSymbols.Find (d.Name.Text) is NFnDecl) throw new ParseException (d.Name, "Variable name has already defined as function in the same block");
       mSymbols.Vars.Add (d);
       return d.Type;
    }
 
    public override NType Visit (NFnDecl f) {
-      if (mSymbols.Funcs.Contains (f)) throw new ParseException (f.Name, "Function name already defined");
-      if (mSymbols.Find (f.Name.Text) is NConstDecl) throw new ParseException (f.Name, "Function name already defined as constant");
-      if (mSymbols.Find (f.Name.Text) is NVarDecl) throw new ParseException (f.Name, "Function name already defined as variable");
+      if (mSymbols.Funcs.Contains (f)) throw new ParseException (f.Name, "Function name has already defined in the same block");
+      if (mSymbols.Find (f.Name.Text) is NConstDecl) throw new ParseException (f.Name, "Function name has already defined as constant in the same block");
+      if (mSymbols.Find (f.Name.Text) is NVarDecl) throw new ParseException (f.Name, "Function name has already defined as variable in the same block");
+      mSymbols.Funcs.Add (f);
       mSymbols = new SymTable { Parent = mSymbols };
       mSymbols.Vars.Add (new NVarDecl (f.Name, f.Return));
       if (mSymbols.Find (f.Name.Text) is not NFnDecl) {
@@ -102,8 +103,12 @@ public class TypeAnalyze : Visitor<NType> {
       return Void;
    }
 
-   public override NType Visit (NReadStmt r) 
-      => Void; 
+   public override NType Visit (NReadStmt r) {
+      //if (mSymbols.Find (r.Vars.ToArray()[0]) is not NVarDecl v)
+      //   throw new ParseException (r.Name, "Variable undeclared");
+      return Void;
+   }
+
 
    public override NType Visit (NWhileStmt w) {
       w.Condition.Accept (this); w.Body.Accept (this);
@@ -166,8 +171,6 @@ public class TypeAnalyze : Visitor<NType> {
    public override NType Visit (NIdentifier d) {
       if (mSymbols.Find (d.Name.Text) is NVarDecl v )
          return d.Type = v.Type;
-      if (mSymbols.Find (d.Name.Text) is not NConstDecl c)
-         throw new ParseException (d.Name, "Unknown variable");
       return Void;
    }
 
@@ -176,8 +179,8 @@ public class TypeAnalyze : Visitor<NType> {
          if (f.Params.Length != g.Params.Length) throw new ParseException (f.Name, $"Parameters count is mismatching. '{g.Name}' function requires {g.Params.Length} parameters.");
          Visit (f.Params);
          for (int i = 0; i < g.Params.Length; i++) {
-            f.Params[i] = AddTypeCast (f.Name, f.Params[i], f.Type);
-            if (f.Params[i].Type != g.Params[i].Type) throw new ParseException (f.Name, $"Parameter type doesn't match. Parameter No.{i + 1} should be a {g.Params[i].Type}, but {f.Params[i].Type} here.");
+         f.Params[i] = AddTypeCast (f.Name, f.Params[i], f.Type);
+         if (f.Params[i].Type != g.Params[i].Type) throw new ParseException (f.Name, $"Parameter type doesn't match. Parameter No.{i + 1} should be a {g.Params[i].Type}, but {f.Params[i].Type} here.");
          }
          return f.Type = g.Return;
       }

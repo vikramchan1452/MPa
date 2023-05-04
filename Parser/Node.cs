@@ -25,7 +25,7 @@ public record NDeclarations (NConstDecl[] Consts, NVarDecl[] Vars, NFnDecl[] Fun
 }
 
 // Declares a constant
-public record NConstDecl (Token Name, NLiteral Value, NType Type) : Node {
+public record NConstDecl (Token Name, NLiteral Value) : Node {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 
