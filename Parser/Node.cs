@@ -31,12 +31,14 @@ public record NConstDecl (Token Name, NLiteral Value) : Node {
 
 // Declares a variable (with a type)
 public record NVarDecl (Token Name, NType Type) : Node {
+   public bool Assigned { get; set; }
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
    public override string ToString () => $"{Type} {Name}";
 }
 
 // Declares a function (or procedure) 
 public record NFnDecl (Token Name, NVarDecl[] Params, NType Return, NBlock? Body) : Node {
+   public bool Assigned { get; set; }
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
    public override string ToString () => $"{Return} {Name} ({Params.ToCSV ()})";
 }

@@ -4,6 +4,7 @@
 namespace PSI;
 
 using System.Linq;
+using System.Xml.Linq;
 using static NType;
 using static Token.E;
 
@@ -55,15 +56,16 @@ public class TypeAnalyze : Visitor<NType> {
       if (mSymbols.Find (f.Name.Text) is NConstDecl) throw new ParseException (f.Name, "Function name has already defined as constant in the same block");
       if (mSymbols.Find (f.Name.Text) is NVarDecl) throw new ParseException (f.Name, "Function name has already defined as variable in the same block");
       mSymbols.Funcs.Add (f);
+      Visit (f.Params);
       mSymbols = new SymTable { Parent = mSymbols };
+      foreach (var v in f.Params) v.Assigned = true;
       mSymbols.Vars.Add (new NVarDecl (f.Name, f.Return));
-      if (mSymbols.Find (f.Name.Text) is not NFnDecl) {
-         Visit (f.Params);
+      if (f.Body != null) {
          f.Body?.Accept(this);
-         mSymbols = mSymbols.Parent;
-         return f.Return;
+         if (!f.Assigned && f.Return != Void) throw new ParseException (f.Name, "Function return value is not set");
       }
-      throw new ParseException (f.Name, "Unknown function");
+      mSymbols = mSymbols.Parent;
+      return f.Return;
    }
    #endregion
 
@@ -72,20 +74,25 @@ public class TypeAnalyze : Visitor<NType> {
       => Visit (b.Stmts);
 
    public override NType Visit (NAssignStmt a) {
-      if (mSymbols.Find (a.Name.Text) is not NVarDecl v)
-         throw new ParseException (a.Name, "Unknown variable");
       a.Expr.Accept (this);
-      a.Expr = AddTypeCast (a.Name, a.Expr, v.Type);
-      return v.Type;
+      NType type;
+      switch (mSymbols.Find (a.Name.Text)) {
+         case NVarDecl v: type = v.Type; v.Assigned = true; break;
+         case NFnDecl f: type = f.Return; f.Assigned = true; break;
+         case NConstDecl: throw new ParseException (a.Name, "Constant cannot be assigned");
+         default: throw new ParseException (a.Name, "Unknown variable");
+      }
+      a.Expr = AddTypeCast (a.Name, a.Expr, type);
+      return type;
    }
-   
+    
    NExpr AddTypeCast (Token token, NExpr source, NType target) {
       if (source.Type == target) return source;
       bool valid = (source.Type, target) switch {
          (Int, Real) or (Char, Int) or (Char, String) => true,
          _ => false
       };
-      if (!valid) throw new ParseException (token, "Invalid type");
+      if (!valid) throw new ParseException (token, $"Expecting {target}, but found{source}");
       return new NTypeCast (source) { Type = target };
    }
 
@@ -104,11 +111,15 @@ public class TypeAnalyze : Visitor<NType> {
    }
 
    public override NType Visit (NReadStmt r) {
-      //if (mSymbols.Find (r.Vars.ToArray()[0]) is not NVarDecl v)
-      //   throw new ParseException (r.Name, "Variable undeclared");
+      foreach (var a in r.Vars) {
+         switch (mSymbols.Find (a.Text)) {
+            case NVarDecl v: v.Assigned = true; return v.Type;
+            case NConstDecl: throw new ParseException (a, "Expecting variable, but found constantnown variable");
+            default: throw new ParseException (a, "Unknown variable");
+         }
+      }
       return Void;
    }
-
 
    public override NType Visit (NWhileStmt w) {
       w.Condition.Accept (this); w.Body.Accept (this);
@@ -121,8 +132,14 @@ public class TypeAnalyze : Visitor<NType> {
    }
     
    public override NType Visit (NCallStmt c) {
-      if (mSymbols.Find (c.Name.Text) is NFnDecl)
-         return Visit (c.Params);
+      if (mSymbols.Find (c.Name.Text) is NFnDecl g) {
+         if (c.Params.Length != g.Params.Length) throw new ParseException (c.Name, $"Parameters count is mismatching. '{g.Name}' procedure requires {g.Params.Length} parameters.");
+         Visit (c.Params);
+         for (int i = 0; i < g.Params.Length; i++) {
+            if (c.Params[i].Type != g.Params[i].Type) throw new ParseException (c.Name, $"Parameter type doesn't match. Parameter-{i + 1}: Expecting {g.Params[i].Type}, but found{c.Params[i].Type}");
+         }
+         return g.Return;
+      }
       throw new ParseException (c.Name, "Unknown procedure");
    }
    #endregion
@@ -171,6 +188,8 @@ public class TypeAnalyze : Visitor<NType> {
    public override NType Visit (NIdentifier d) {
       if (mSymbols.Find (d.Name.Text) is NVarDecl v )
          return d.Type = v.Type;
+      if (mSymbols.Find (d.Name.Text) is NConstDecl c)
+         return d.Type = c.Value.Type;
       return Void;
    }
 
@@ -186,7 +205,7 @@ public class TypeAnalyze : Visitor<NType> {
       }
       throw new ParseException (f.Name, "Unknown function");
    }
-   
+
    public override NType Visit (NTypeCast c) {
       c.Expr.Accept (this); return c.Type;
    }
