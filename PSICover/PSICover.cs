@@ -160,7 +160,7 @@ class Analyzer {
                              .OrderBy (a => a.SPosition)
                              .ThenByDescending (a => a.EPosition)
                              .ToList ();
-         for (int i = blocks.Count - 1; i > 0; i--)
+         for (int i = blocks.Count - 1; i > 0; i--) 
             if (blocks[i - 1].Contains (blocks[i]))
                blocks.RemoveAt (i - 1);
          blocks.Reverse ();
@@ -175,17 +175,7 @@ class Analyzer {
             for (int l = block.ELine; l <= block.SLine; l--) {
                code[l] = code[block.ELine].Insert (block.ECol, $"<span class=\"tooltiptext\">No. of hits = {bID}</span></span>");
                code[l] = code[block.SLine].Insert (block.SCol, tag);
-            }/*
-            if (code[block.ELine] == code[block.SLine]) {
-               code[block.ELine] = code[block.ELine].Insert (block.ECol, $"<span class=\"tooltiptext\">No. of hits = {bID}</span></span>");
-               code[block.SLine] = code[block.SLine].Insert (block.SCol, tag);
             }
-            else {
-               for (int l = block.ELine; l <= block.SLine; l--) {
-                  code[l] = code[block.ELine].Insert (block.ECol, $"<span class=\"tooltiptext\">No. of hits = {bID}</span></span>");
-                  code[l] = code[block.SLine].Insert (block.SCol, tag);
-               }
-            }*/
          }
          Directory.CreateDirectory ("HTML");
          string htmlfile = $"{Dir}/HTML/{Path.GetFileNameWithoutExtension (file)}.html";
