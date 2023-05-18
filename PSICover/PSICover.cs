@@ -1,5 +1,7 @@
 ﻿namespace PSICover;
 using System.Diagnostics;
+using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 
 // The CoverageAnalyzer for .Net
@@ -19,6 +21,7 @@ class Analyzer {
          Modules.ForEach (Assemble);
          RunCode ();
          GenerateOutputs ();
+         GenerateSummary ();
       } finally {
          Modules.ForEach (RestoreBackup);
       }
@@ -69,7 +72,7 @@ class Analyzer {
             throw new Exception ($"Could not match {line}");
          }
       }
-      var asmFile = Path.ChangeExtension (module, ".original.asm");
+      var asmFile = Path.ChangeExtension (module, ".original.asm"); string a;
       File.WriteAllLines ($"{Dir}/{asmFile}", text2.ToArray ());
       File.Delete ($"{Dir}/lines.asm");
       File.Delete ($"{Dir}/nolines.asm");
@@ -113,7 +116,7 @@ class Analyzer {
                output.Add ("           " + s2[colon..]);
                i++;
             }
-         } 
+         }
       }
       File.WriteAllLines (outfile, output);
    }
@@ -126,7 +129,7 @@ class Analyzer {
    static string[] sJumps = new[] {
       "leave", "br", "beq", "bge", "bge.un", "bgt", "bgt.un",
       "ble", "ble.un", "blt", "blt.un", "bne", "bne.un",
-      "brfalse", "brnull", "brzero", "brtrue", "brinst" 
+      "brfalse", "brnull", "brzero", "brtrue", "brinst"
    };
    static Regex mRxLine = new Regex (@"\.line (\d+),(\d+) : (\d+),(\d+) '(.*)'");
    List<Block> mBlocks = new ();
@@ -150,12 +153,14 @@ class Analyzer {
    void GenerateOutputs () {
       ulong[] hits = File.ReadAllLines ($"{Dir}/hits.txt").Select (ulong.Parse).ToArray ();
       var files = mBlocks.Select (a => a.File).Distinct ().ToArray ();
+      //ulong bID;
       foreach (var file in files) {
+         ulong bID = 0;
          var blocks = mBlocks.Where (a => a.File == file)
                              .OrderBy (a => a.SPosition)
                              .ThenByDescending (a => a.EPosition)
                              .ToList ();
-         for (int i = blocks.Count - 1; i > 0; i--)
+         for (int i = blocks.Count - 1; i > 0; i--) 
             if (blocks[i - 1].Contains (blocks[i]))
                blocks.RemoveAt (i - 1);
          blocks.Reverse ();
@@ -164,18 +169,47 @@ class Analyzer {
          for (int i = 0; i < code.Length; i++)
             code[i] = code[i].Replace ('<', '\u00ab').Replace ('>', '\u00bb');
          foreach (var block in blocks) {
+            bID = hits[block.Id];
             bool hit = hits[block.Id] > 0;
-            string tag = $"<span class=\"{(hit ? "hit" : "unhit")}\">";
-            code[block.ELine] = code[block.ELine].Insert (block.ECol, "</span>");
-            code[block.SLine] = code[block.SLine].Insert (block.SCol, tag);
+            string tag = $"<span class=\"{(hit ? "hit tooltip" : "unhit")}\">";
+            if (block.ELine == block.SLine) {
+               code[block.ELine] = code[block.ELine].Insert (block.ECol, $"<span class=\"tooltiptext\">No. of hits = {bID}</span></span>");
+               code[block.SLine] = code[block.SLine].Insert (block.SCol, tag);
+            } else {
+               for (int l = block.ELine; l <= block.SLine; l--) {
+                  code[l] = code[block.ELine].Insert (block.ECol, $"<span class=\"tooltiptext\">No. of hits = {bID}</span></span>");
+                  code[l] = code[block.SLine].Insert (block.SCol, tag);
+               }
+            }
          }
+         Directory.CreateDirectory ("HTML");
          string htmlfile = $"{Dir}/HTML/{Path.GetFileNameWithoutExtension (file)}.html";
 
          string html = $$"""
             <html><head><style>
+            .tooltip {
+              position: relative;
+              display: inline-block;
+            }
+
+            .tooltip .tooltiptext {
+              visibility: hidden;
+              width: 140px;
+              background-color: black;
+              color: #fff;
+              text-align: center;
+              padding: 5px 0;
+              position: absolute;
+              z-index: 1;
+            }
+
+            .tooltip:hover 
+            .tooltiptext { visibility: visible; }
+
             .hit { background-color:aqua; }
             .unhit { background-color:orange; }
             </style></head>
+
             <body><pre>
             {{string.Join ("\r\n", code)}}
             </pre></body></html>
@@ -186,6 +220,67 @@ class Analyzer {
       int cBlocks = mBlocks.Count, cHit = hits.Count (a => a > 0);
       double percent = Math.Round (100.0 * cHit / cBlocks, 1);
       Console.WriteLine ($"Coverage: {cHit}/{cBlocks}, {percent}%");
+   }
+
+   // Generate output HTML summary table 
+   void GenerateSummary () {
+      ulong[] hits = File.ReadAllLines ($"{Dir}/hits.txt").Select (ulong.Parse).ToArray ();
+      var files = mBlocks.Select (a => a.File).Distinct ().ToArray ();
+      Dictionary<string, double> contents = new ();
+      string lines = "";
+      //int c = 0;
+      foreach (var file in files) {
+         var fBlocks = mBlocks.Where (a => a.File == file);
+         var cBlocks = fBlocks.Where (a => hits[a.Id] > 0).Count ();
+         double coverage = Math.Round (100.0 * cBlocks / fBlocks.Count (), 1);
+         string path = Directory.GetCurrentDirectory ()[0..^3];
+         string line = $$"""
+            <tr>
+               <td>{{Path.GetFileName (file)}}</td>
+               <td>{{fBlocks.Count ()}}</td>
+               <td>{{cBlocks}}</td>
+               <td>{{coverage}}%</td>
+            </tr>
+            """;
+         contents.Add (line, coverage);
+      }
+      foreach (var line in contents.OrderBy (a => a.Value)) lines += line.Key;
+      string htmlfile = $"{Dir}/HTML/Summary.html";
+      string html = $$"""
+         <html><head><style>
+         table {
+            font-family: arial, sans-serif;
+            border-collapse: collapse;
+            width: 100%
+         }
+
+         td, th {
+            border: 1px outset black;
+            text-align: center;
+            padding: 8x;
+         }
+
+         td:nth-child(even), th:nth-child(even) {
+           background-color: #D6EEEE;
+         }
+
+         </style></head>
+         <body>
+
+         <h2>Summay Table</h2>
+
+         <table>
+            <tr>
+               <th>Source Code</th>
+               <th>Total Blocks</th>
+               <th>Covered Blocks</th>
+               <th>Code Coverage</th>
+            </tr>
+         {{lines}}
+         </table></body></html>
+         """;
+      html = html.Replace ("\u00ab", "&lt;").Replace ("\u00bb", "&gt;");
+      File.WriteAllText (htmlfile, html);
    }
 
    // Restore the DLLs and PDBs from the backups
@@ -222,7 +317,7 @@ class Block {
       return true;
    }
 
-   public override string ToString () 
+   public override string ToString ()
       => $"{SLine},{ELine} : {SCol},{ECol} of {File}";
 
    public readonly int Id;
