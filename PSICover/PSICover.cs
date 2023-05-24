@@ -72,7 +72,7 @@ class Analyzer {
             throw new Exception ($"Could not match {line}");
          }
       }
-      var asmFile = Path.ChangeExtension (module, ".original.asm"); string a;
+      var asmFile = Path.ChangeExtension (module, ".original.asm");
       File.WriteAllLines ($"{Dir}/{asmFile}", text2.ToArray ());
       File.Delete ($"{Dir}/lines.asm");
       File.Delete ($"{Dir}/nolines.asm");
@@ -153,14 +153,12 @@ class Analyzer {
    void GenerateOutputs () {
       ulong[] hits = File.ReadAllLines ($"{Dir}/hits.txt").Select (ulong.Parse).ToArray ();
       var files = mBlocks.Select (a => a.File).Distinct ().ToArray ();
-      //ulong bID;
       foreach (var file in files) {
-         ulong bID = 0;
          var blocks = mBlocks.Where (a => a.File == file)
                              .OrderBy (a => a.SPosition)
                              .ThenByDescending (a => a.EPosition)
                              .ToList ();
-         for (int i = blocks.Count - 1; i > 0; i--) 
+         for (int i = blocks.Count - 1; i > 0; i--)
             if (blocks[i - 1].Contains (blocks[i]))
                blocks.RemoveAt (i - 1);
          blocks.Reverse ();
@@ -169,42 +167,21 @@ class Analyzer {
          for (int i = 0; i < code.Length; i++)
             code[i] = code[i].Replace ('<', '\u00ab').Replace ('>', '\u00bb');
          foreach (var block in blocks) {
-            bID = hits[block.Id];
+            ulong bID = hits[block.Id];
             bool hit = hits[block.Id] > 0;
-            string tag = $"<span class=\"{(hit ? "hit tooltip" : "unhit")}\">";
-            if (block.ELine == block.SLine) {
-               code[block.ELine] = code[block.ELine].Insert (block.ECol, $"<span class=\"tooltiptext\">No. of hits = {bID}</span></span>");
-               code[block.SLine] = code[block.SLine].Insert (block.SCol, tag);
-            } else {
-               for (int l = block.ELine; l <= block.SLine; l--) {
-                  code[l] = code[block.ELine].Insert (block.ECol, $"<span class=\"tooltiptext\">No. of hits = {bID}</span></span>");
-                  code[l] = code[block.SLine].Insert (block.SCol, tag);
-               }
+            string tag = $"<span class=" + (hit ? $"\"hit\" title= \"No.of hits = {bID}\"" : "\"unhit\"") + ">";
+            for (int l = block.SLine; l <= block.ELine; l++) {
+               code[l] = code[l].Insert (code[l].Length, "</span>");
+               code[l] = code[l].Insert (code[l].TakeWhile(char.IsWhiteSpace).Count(), tag);
             }
          }
+
          Directory.CreateDirectory ("HTML");
          string htmlfile = $"{Dir}/HTML/{Path.GetFileNameWithoutExtension (file)}.html";
 
          string html = $$"""
             <html><head><style>
-            .tooltip {
-              position: relative;
-              display: inline-block;
-            }
 
-            .tooltip .tooltiptext {
-              visibility: hidden;
-              width: 140px;
-              background-color: black;
-              color: #fff;
-              text-align: center;
-              padding: 5px 0;
-              position: absolute;
-              z-index: 1;
-            }
-
-            .tooltip:hover 
-            .tooltiptext { visibility: visible; }
 
             .hit { background-color:aqua; }
             .unhit { background-color:orange; }
@@ -217,6 +194,7 @@ class Analyzer {
          html = html.Replace ("\u00ab", "&lt;").Replace ("\u00bb", "&gt;");
          File.WriteAllText (htmlfile, html);
       }
+
       int cBlocks = mBlocks.Count, cHit = hits.Count (a => a > 0);
       double percent = Math.Round (100.0 * cHit / cBlocks, 1);
       Console.WriteLine ($"Coverage: {cHit}/{cBlocks}, {percent}%");
@@ -244,6 +222,7 @@ class Analyzer {
             """;
          contents.Add (line, coverage);
       }
+
       foreach (var line in contents.OrderBy (a => a.Value)) lines += line.Key;
       string htmlfile = $"{Dir}/HTML/Summary.html";
       string html = $$"""
@@ -263,12 +242,10 @@ class Analyzer {
          td:nth-child(even), th:nth-child(even) {
            background-color: #D6EEEE;
          }
-
          </style></head>
+
          <body>
-
          <h2>Summay Table</h2>
-
          <table>
             <tr>
                <th>Source Code</th>
