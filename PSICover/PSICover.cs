@@ -21,7 +21,6 @@ class Analyzer {
          Modules.ForEach (Assemble);
          RunCode ();
          GenerateOutputs ();
-         GenerateSummary ();
       } finally {
          Modules.ForEach (RestoreBackup);
       }
@@ -151,6 +150,7 @@ class Analyzer {
 
    // Generate output HTML (colored source code with hit / unhit areas marked)
    void GenerateOutputs () {
+      // To colour-code and add Tool-tip to the code-----------------------------------------------
       ulong[] hits = File.ReadAllLines ($"{Dir}/hits.txt").Select (ulong.Parse).ToArray ();
       var files = mBlocks.Select (a => a.File).Distinct ().ToArray ();
       foreach (var file in files) {
@@ -171,15 +171,17 @@ class Analyzer {
             bool hit = hits[block.Id] > 0;
             string tag = $"<span class=" + (hit ? $"\"hit\" title= \"No.of hits = {bID}\"" : "\"unhit\"") + ">";
             for (int l = block.SLine; l <= block.ELine; l++) {
-               code[l] = code[l].Insert (code[l].Length, "</span>");
-               code[l] = code[l].Insert (code[l].TakeWhile(char.IsWhiteSpace).Count(), tag);
+               var iP = (l == block.SLine) ? block.SCol : code[l].TakeWhile (char.IsWhiteSpace).Count ();
+               var fP = (l == block.ELine) ? block.ECol : code[l].Length;
+               code[l] = code[l].Insert (fP, "</span>");
+               code[l] = code[l].Insert (iP, tag);
             }
          }
 
          Directory.CreateDirectory ("HTML");
-         string htmlfile = $"{Dir}/HTML/{Path.GetFileNameWithoutExtension (file)}.html";
+         string htmlfile1 = $"{Dir}/HTML/{Path.GetFileNameWithoutExtension (file)}.html";
 
-         string html = $$"""
+         string html1 = $$"""
             <html><head><style>
 
             .hit { background-color:aqua; }
@@ -190,41 +192,35 @@ class Analyzer {
             {{string.Join ("\r\n", code)}}
             </pre></body></html>
             """;
-         html = html.Replace ("\u00ab", "&lt;").Replace ("\u00bb", "&gt;");
-         File.WriteAllText (htmlfile, html);
+         html1 = html1.Replace ("\u00ab", "&lt;").Replace ("\u00bb", "&gt;");
+         File.WriteAllText (htmlfile1, html1);
       }
 
-      int cBlocks = mBlocks.Count, cHit = hits.Count (a => a > 0);
-      double percent = Math.Round (100.0 * cHit / cBlocks, 1);
-      Console.WriteLine ($"Coverage: {cHit}/{cBlocks}, {percent}%");
-   }
-
-   // Generate output HTML summary table 
-   void GenerateSummary () {
-      ulong[] hits = File.ReadAllLines ($"{Dir}/hits.txt").Select (ulong.Parse).ToArray ();
-      var files = mBlocks.Select (a => a.File).Distinct ().ToArray ();
-      Dictionary<string, double> contents = new ();
+      // To Generate Summary Table-----------------------------------------------------------------
+      List<Tuple<string, int, int, double>> Contents = new ();
       string lines = "";
-      //int c = 0;
       foreach (var file in files) {
          var fBlocks = mBlocks.Where (a => a.File == file);
-         var cBlocks = fBlocks.Where (a => hits[a.Id] > 0).Count ();
-         double coverage = Math.Round (100.0 * cBlocks / fBlocks.Count (), 1);
+         var fBlocksCount = fBlocks.Count ();
+         var cBlocksCount = fBlocks.Where (a => hits[a.Id] > 0).Count ();
+         double coverage = Math.Round (100.0 * cBlocksCount / fBlocksCount, 1);
          string path = Directory.GetCurrentDirectory ()[0..^3];
-         string line = $$"""
+         StringBuilder S = new ();
+         Contents.Add (Tuple.Create (Path.GetFileName (file), fBlocksCount, cBlocksCount, coverage));
+      }
+      Contents = Contents.OrderBy (i => i.Item4).ToList ();
+      foreach (var v in Contents) {
+         lines += $$"""
             <tr>
-               <td>{{Path.GetFileName (file)}}</td>
-               <td>{{fBlocks.Count ()}}</td>
-               <td>{{cBlocks}}</td>
-               <td>{{coverage}}%</td>
+               <td>{{v.Item1}}</td>
+               <td>{{v.Item2}}</td>
+               <td>{{v.Item3}}</td>
+               <td>{{v.Item4}}%</td>
             </tr>
             """;
-         contents.Add (line, coverage);
       }
-
-      foreach (var line in contents.OrderBy (a => a.Value)) lines += line.Key;
-      string htmlfile = $"{Dir}/HTML/Summary.html";
-      string html = $$"""
+      string htmlfile2 = $"{Dir}/HTML/Summary.html";
+      string html2 = $$"""
          <html><head><style>
          table {
             font-family: arial, sans-serif;
@@ -255,11 +251,14 @@ class Analyzer {
          {{lines}}
          </table></body></html>
          """;
-      html = html.Replace ("\u00ab", "&lt;").Replace ("\u00bb", "&gt;");
-      File.WriteAllText (htmlfile, html);
+      html2 = html2.Replace ("\u00ab", "&lt;").Replace ("\u00bb", "&gt;");
+      File.WriteAllText (htmlfile2, html2);
+
+      int cBlocks = mBlocks.Count, cHit = hits.Count (a => a > 0);
+      double percent = Math.Round (100.0 * cHit / cBlocks, 1);
+      Console.WriteLine ($"Coverage: {cHit}/{cBlocks}, {percent}%");
    }
 
-   // Restore the DLLs and PDBs from the backups
    void RestoreBackup (string module) {
       Console.WriteLine ("Restoring backups");
       Directory.CreateDirectory ($"{Dir}/Backups");
