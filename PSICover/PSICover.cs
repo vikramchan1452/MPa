@@ -205,7 +205,6 @@ class Analyzer {
          var cBlocksCount = fBlocks.Where (a => hits[a.Id] > 0).Count ();
          double coverage = Math.Round (100.0 * cBlocksCount / fBlocksCount, 1);
          string path = Directory.GetCurrentDirectory ()[0..^3];
-         StringBuilder S = new ();
          Contents.Add (Tuple.Create (Path.GetFileName (file), fBlocksCount, cBlocksCount, coverage));
       }
       Contents = Contents.OrderBy (i => i.Item4).ToList ();
