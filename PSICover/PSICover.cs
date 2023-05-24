@@ -169,10 +169,10 @@ class Analyzer {
          foreach (var block in blocks) {
             ulong bID = hits[block.Id];
             bool hit = hits[block.Id] > 0;
-            string tag = $"<span class=\"{(hit ? "hit tooltip" : "unhit")}\">";
+            string tag = $"<span class=" + (hit ? $"\"hit\" title= \"No.of hits = {bID}\"" : "\"unhit\"") + ">";
             for (int l = block.SLine; l <= block.ELine; l++) {
-               code[l] = code[l].Insert (code[l].Length, $"<span class=\"tooltiptext\">No. of hits = {bID}</span></span></span>");
-               code[l] = code[l].Insert (code[l].TakeWhile (char.IsWhiteSpace).Count (), tag);
+               code[l] = code[l].Insert (code[l].Length, "</span>");
+               code[l] = code[l].Insert (code[l].TakeWhile(char.IsWhiteSpace).Count(), tag);
             }
          }
 
@@ -181,24 +181,6 @@ class Analyzer {
 
          string html = $$"""
             <html><head><style>
-            .tooltip {
-              position: relative;
-              display: inline-block;
-            }
-             
-            .tooltip .tooltiptext {
-              visibility: hidden;
-              width: 140px;
-              background-color: black;
-              color: #fff;
-              text-align: center;
-              padding: 5px 0;
-              position: absolute;
-              z-index: 1;
-            }
-
-            .tooltip:hover 
-            .tooltiptext { visibility: visible; }
 
             .hit { background-color:aqua; }
             .unhit { background-color:orange; }
@@ -211,7 +193,7 @@ class Analyzer {
          html = html.Replace ("\u00ab", "&lt;").Replace ("\u00bb", "&gt;");
          File.WriteAllText (htmlfile, html);
       }
-      
+
       int cBlocks = mBlocks.Count, cHit = hits.Count (a => a > 0);
       double percent = Math.Round (100.0 * cHit / cBlocks, 1);
       Console.WriteLine ($"Coverage: {cHit}/{cBlocks}, {percent}%");
