@@ -197,26 +197,26 @@ class Analyzer {
       }
 
       // To Generate Summary Table-----------------------------------------------------------------
-      List<Tuple<string, int, int, double>> Contents = new ();
-      string lines = "";
+      List<(string fileName, int fBlocks, int cBlocks, double coverage)> Contents = new ();
+      StringBuilder lines = new ();
       foreach (var file in files) {
          var fBlocks = mBlocks.Where (a => a.File == file);
          var fBlocksCount = fBlocks.Count ();
          var cBlocksCount = fBlocks.Where (a => hits[a.Id] > 0).Count ();
          double coverage = Math.Round (100.0 * cBlocksCount / fBlocksCount, 1);
          string path = Directory.GetCurrentDirectory ()[0..^3];
-         Contents.Add (Tuple.Create (Path.GetFileName (file), fBlocksCount, cBlocksCount, coverage));
+         Contents.Add (new (Path.GetFileName (file), fBlocksCount, cBlocksCount, coverage));
       }
       Contents = Contents.OrderBy (i => i.Item4).ToList ();
       foreach (var v in Contents) {
-         lines += $$"""
+         lines.Append($$"""
             <tr>
-               <td>{{v.Item1}}</td>
-               <td>{{v.Item2}}</td>
-               <td>{{v.Item3}}</td>
-               <td>{{v.Item4}}%</td>
+               <td>{{v.fileName}}</td>
+               <td>{{v.fBlocks}}</td>
+               <td>{{v.cBlocks}}</td>
+               <td>{{v.coverage}}%</td>
             </tr>
-            """;
+            """);
       }
       string htmlfile2 = $"{Dir}/HTML/Summary.html";
       string html2 = $$"""
