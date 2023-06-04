@@ -66,19 +66,8 @@ public class ILCodeGen : Visitor {
       }
       if (w.NewLine) Out ("    call void [System.Console]System.Console::WriteLine ()");
    }
-
-   public override void Visit (NIfStmt f) {
-      string lab1 = NextLabel (), lab2 = NextLabel ();
-      Out ($"  {lab1}:");
-      f.Condition.Accept (this);
-      Out ($"    brfalse {lab2}");
-      f.IfPart.Accept (this);
-      if (f.ElsePart != null) {
-         Out ($"  {lab2}:");
-         f.ElsePart?.Accept (this);
-      } else Out ($"  {lab2}: nop");
-   }
-
+   
+   public override void Visit (NIfStmt f) => throw new NotImplementedException ();
    public override void Visit (NForStmt f) => throw new NotImplementedException ();
    public override void Visit (NReadStmt r) => throw new NotImplementedException ();
 
