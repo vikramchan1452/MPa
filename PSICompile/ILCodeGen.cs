@@ -2,6 +2,8 @@
 // ILCodeGen.cs : Compiles a PSI parse tree to IL
 // ─────────────────────────────────────────────────────────────────────────────
 using System.Text;
+using System.Xml.Linq;
+
 namespace PSI;
 
 public class ILCodeGen : Visitor {
@@ -59,6 +61,12 @@ public class ILCodeGen : Visitor {
       else Out ($"    stsfld {type} Program::{vd.Name}");
    }
 
+   void LoadVar (Token name) {
+      var vd = (NVarDecl)mSymbols.Find (name)!;
+      var type = TMap[vd.Type];
+      if (vd.Local) Out ($"    ldloc {vd.Name}");
+      else Out ($"    ldsfld {type} Program::{vd.Name}");
+   }
    public override void Visit (NWriteStmt w) {
       foreach (var e in w.Exprs) {
          e.Accept (this);
@@ -66,9 +74,36 @@ public class ILCodeGen : Visitor {
       }
       if (w.NewLine) Out ("    call void [System.Console]System.Console::WriteLine ()");
    }
-   
-   public override void Visit (NIfStmt f) => throw new NotImplementedException ();
-   public override void Visit (NForStmt f) => throw new NotImplementedException ();
+
+   public override void Visit (NIfStmt f) {
+      string lab1 = NextLabel (), lab2 = NextLabel ();
+      f.Condition.Accept (this);
+      Out ($"    brfalse {lab1}");
+      f.IfPart.Accept (this);
+      Out ($"    br {lab2}");
+      Out ($"  {lab1}:");
+      f.ElsePart?.Accept (this);
+      Out ($"  {lab2}:");
+   }
+
+   public override void Visit (NForStmt f) {
+      string lab1 = NextLabel (), lab2 = NextLabel ();
+      f.Start.Accept (this);
+      StoreVar (f.Var);
+      Out ($"    br {lab2}");
+      Out ($"    {lab1}:");
+      f.Body.Accept (this);
+      LoadVar (f.Var);
+      Out ("    ldc.i4.1");
+      Out ($"    {(f.Ascending ? "add" : "sub")}");
+      StoreVar (f.Var);
+      Out ($"    {lab2}:");
+      LoadVar (f.Var);
+      f.End.Accept (this);
+      Out ($"    {(f.Ascending ? "cgt" : "clt")}");
+      Out ($"    brfalse {lab1}");
+   }
+
    public override void Visit (NReadStmt r) => throw new NotImplementedException ();
 
    public override void Visit (NWhileStmt w) {
@@ -127,15 +162,24 @@ public class ILCodeGen : Visitor {
 
    public override void Visit (NBinary b) {
       b.Left.Accept (this); b.Right.Accept (this);
-      if (b.Left.Type == NType.String) 
+      if (b.Left.Type == NType.String)
          Out ("    call string [System.Runtime]System.String::Concat (string, string)");
       else {
          string op = b.Op.Kind.ToString ().ToLower ();
-         op = op switch { "mod" => "rem", "eq" => "ceq", "lt" => "clt", _ => op };
+         op = op switch {
+            "mod" => "rem",
+            "eq" => "ceq",
+            "lt" => "clt",
+            "leq" => "cgt\n    ldc.i4.0\n    ceq",
+            "gt" => "cgt",
+            "geq" => "clt\n    ldc.i4.0\n    ceq",
+            "neq" => "ceq\n    ldc.i4.0\n    ceq",
+            _ => op
+         };
          Out ($"    {op}");
       }
    }
-   
+
    public override void Visit (NFnCall f) => throw new NotImplementedException ();
 
    public override void Visit (NTypeCast t) {
