@@ -2,7 +2,6 @@
 // ILCodeGen.cs : Compiles a PSI parse tree to IL
 // ─────────────────────────────────────────────────────────────────────────────
 using System.Text;
-using System.Xml.Linq;
 
 namespace PSI;
 
