@@ -99,7 +99,7 @@ public class Parser {
       if (Match (IF)) return IfStmt ();
       if (Match (FOR)) return ForStmt ();
       if (Peek (BEGIN)) return CompoundStmt ();
-      if (Match (READ)) return ReadStmt ();
+      if (Match (READLN)) return ReadStmt ();
       if (Match (WHILE)) return WhileStmt ();
       if (Match (REPEAT)) return RepeatStmt ();
       Unexpected ();
@@ -133,7 +133,7 @@ public class Parser {
       return new (name, start, ascending, end, Stmt ());
    }
 
-   // read-stmt = "read" "(" varlist ")" .
+   // "read" (" identlist ")" .
    NReadStmt ReadStmt () {
       var names = new List<Token> ();
       Expect (OPEN);

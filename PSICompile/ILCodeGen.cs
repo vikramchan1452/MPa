@@ -52,7 +52,7 @@ public class ILCodeGen : Visitor {
       mSymbols = new SymTable { Parent = mSymbols };
       f.Params.ForEach (v => { v.Argument = true; mSymbols.Add (v); });
       var args = f.Params.Select (v => $"{TMap[v.Type]} {v.Name}").ToCSV ();
-      Out ($"  .method static {TMap[f.Return]} {f.Name} ({args}) {{");
+      Out ($"    .method static {TMap[f.Return]} {f.Name} ({args}) {{");
       if (f.Return != Void) Out ($"    .locals init ( {TMap[f.Return]} {f.Name} )");
       if (f.Block != null) {
          f.Block.Declarations.Vars.ForEach (x => x.Local = true);
@@ -67,7 +67,7 @@ public class ILCodeGen : Visitor {
    public override void Visit (NCompoundStmt b) =>
       Visit (b.Stmts);
 
-   public override void Visit (NAssignStmt a) {
+   public override void Visit (NAssignStmt a) { 
       a.Expr.Accept (this);
       StoreVar (a.Name);
    }
@@ -132,7 +132,24 @@ public class ILCodeGen : Visitor {
       Out ($"    brfalse {labl1}");
    }
 
-   public override void Visit (NReadStmt r) => throw new NotImplementedException ();
+   public override void Visit (NReadStmt r) {
+      foreach (var v in r.Vars) {
+         var name = (NVarDecl)mSymbols.Find (v)!;
+         var type = TMap[name.Type];
+         Out ($"    call string [System.Console]System.Console::ReadLine()");
+         if (type != "string") {
+            string keyword = type switch {
+               "int32" => "Int32",
+               "float64" => "Double",
+               "bool" => "Boolean",
+               "char" => "Char",
+               _ => throw new NotImplementedException (),
+            };
+            Out ($"    call {type} [System.Runtime]System.Convert::To{keyword}(string)");
+         }
+         StoreVar (v);
+      }
+   }
 
    public override void Visit (NWhileStmt w) {
       string lab1 = NextLabel (), lab2 = NextLabel ();

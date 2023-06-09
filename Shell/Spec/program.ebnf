@@ -15,7 +15,7 @@ paramlist         =  "(" var-decl { "," var-decl } ")"
 statement         =  write-stmt | read-stmt | assign-stmt | call-stmt |
                      if-stmt | while-stmt | repeat-stmt | compound-stmt | for-stmt 
 write-stmt        =  ( "writeln" | "write" ) arglist .
-read-stmt         =  "read" "(" identlist ")" .
+read-stmt         =  "readln" "(" identlist ")" .
 assign-stmt       =  IDENT ":=" expression .
 call-stmt         =  IDENT arglist .
 if-stmt           =  "if" expression "then" statement [ "else" statement ] .
