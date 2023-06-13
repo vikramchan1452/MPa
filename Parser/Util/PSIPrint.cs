@@ -147,6 +147,9 @@ public class PSIPrint : Visitor<StringBuilder> {
       return Write (");");
    }
 
+   public override StringBuilder Visit (NBreakStmt b)
+      => NWrite ("break" + (b.Number != 1 ? $"{b.Number};" : "1;"));
+
    StringBuilder Visit (params Node[] nodes) {
       nodes.ForEach (a => a.Accept (this));
       return S;
@@ -164,8 +167,5 @@ public class PSIPrint : Visitor<StringBuilder> {
       return S;
    }
 
-   public override StringBuilder Visit (NBreakStmt b) 
-      => NWrite ("break" + b.Number != null ? $"{b.Number};" : "1;");
-  
    readonly StringBuilder S = new ();
 }
