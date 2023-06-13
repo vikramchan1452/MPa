@@ -126,6 +126,10 @@ class TypeAnalyze : Visitor<NType> {
       CheckFunctionCall (c.Name, c.Params);
       return Void; 
    }
+
+   public override NType Visit (NBreakStmt b)
+      => Void;
+
    #endregion
 
    #region Expression --------------------------------------

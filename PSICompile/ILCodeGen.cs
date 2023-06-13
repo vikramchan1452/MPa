@@ -116,6 +116,7 @@ public class ILCodeGen : Visitor {
 
    public override void Visit (NForStmt f) { 
       string labl1 = NextLabel (), labl2 = NextLabel ();
+      LoopIn ();
       f.Start.Accept (this);
       StoreVar (f.Var);
       Out ($"    br {labl2}");
@@ -130,6 +131,7 @@ public class ILCodeGen : Visitor {
       f.End.Accept (this);
       Out (f.Ascending ? "    cgt" : "    clt");
       Out ($"    brfalse {labl1}");
+      LoopOut ();
    }
 
    public override void Visit (NReadStmt r) {
@@ -153,26 +155,47 @@ public class ILCodeGen : Visitor {
 
    public override void Visit (NWhileStmt w) {
       string lab1 = NextLabel (), lab2 = NextLabel ();
+      LoopIn ();
       Out ($"    br {lab2}");
       Out ($"  {lab1}:");
       w.Body.Accept (this);
       Out ($"  {lab2}:");
       w.Condition.Accept (this);
       Out ($"    brtrue {lab1}");
+      LoopOut ();
    }
 
    public override void Visit (NRepeatStmt r) {
       string lab = NextLabel ();
+      LoopIn ();
       Out ($"  {lab}:");
       Visit (r.Stmts);
       r.Condition.Accept (this);
       Out ($"    brfalse {lab}");
+      LoopOut ();
    }
    string NextLabel () => $"IL_{++mLabel:D4}";
    int mLabel;
 
 
    public override void Visit (NCallStmt c) => CallFunction (c.Name, c.Params);
+
+   public override void Visit (NBreakStmt b) {
+      int num = b.Number != 1 ? int.Parse (b.Number.ToString ()) : 1;
+      if (1 > num) throw new ParseException (b.Name, "Invalid break value!");
+      if (num > LoopsID.Count) throw new ParseException (b.Name, "Break value surpassed!");
+      Out ($"    br {LoopsID[^num]}");
+   }
+
+   public List<string> LoopsID = new ();
+   void LoopIn () => LoopsID.Add (NextLabel ());
+   string LoopOut () {
+      var RecentLoopID = LoopsID[^1];
+      LoopsID.Remove (RecentLoopID);
+      Out ($"    {RecentLoopID}:");
+      return RecentLoopID;
+   }
+
 
    public override void Visit (NLiteral t) {
       var v = t.Value;

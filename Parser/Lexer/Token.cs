@@ -24,7 +24,7 @@ public class Token {
       PROGRAM, CONST, VAR, IF, THEN, WHILE, ELSE, FOR, TO, DOWNTO,
       DO, BEGIN, END, PRINT, TYPE, NOT, OR, AND, MOD, WRITE,
       WRITELN, READLN, LABEL, INTEGER, REAL, BOOLEAN, STRING, CHAR,
-      PROCEDURE, FUNCTION, REPEAT, UNTIL, _ENDKEYWORDS,
+      PROCEDURE, FUNCTION, REPEAT, UNTIL, BREAK, _ENDKEYWORDS,
       // Operators
       ADD, SUB, MUL, DIV, NEQ, LEQ, GEQ, EQ, LT, GT, ASSIGN, 
       _ENDOPERATORS,
@@ -74,7 +74,7 @@ public class Token {
    public static readonly List<(E Kind, string Text)> Match = new () {
       (NEQ, "<>"), (LEQ, "<="), (GEQ, ">="), (ASSIGN, ":="), (ADD, "+"),
       (SUB, "-"), (MUL, "*"), (DIV, "/"), (EQ, "="), (LT, "<"),
-      (LEQ, "<="), (GT, ">"), (SEMI, ";"), (PERIOD, "."), (COMMA, ","),
+      (GT, ">"), (SEMI, ";"), (PERIOD, "."), (COMMA, ","),
       (OPEN, "("), (CLOSE, ")"), (COLON, ":")
    };
 }

@@ -102,6 +102,7 @@ public class Parser {
       if (Match (READLN)) return ReadStmt ();
       if (Match (WHILE)) return WhileStmt ();
       if (Match (REPEAT)) return RepeatStmt ();
+      if (Match (BREAK)) return BreakStmt ();
       Unexpected ();
       return null!;
    }
@@ -167,6 +168,17 @@ public class Parser {
 
    NCallStmt CallStmt () 
       => new (Prev, ArgList ());
+
+   NBreakStmt BreakStmt () {
+      var token = Prev; int num = 1;
+      if (Peek (L_INTEGER)) {
+         var i = Expect (L_INTEGER);
+         num = int.Parse(i.Text);
+      }
+      Expect (SEMI);
+      return new NBreakStmt (token, num);
+
+   }
    #endregion
 
    #region Expression --------------------------------------
