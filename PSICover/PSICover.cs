@@ -199,12 +199,12 @@ class Analyzer {
       // To Generate Summary Table-----------------------------------------------------------------
       List<(string fileName, int fBlocks, int cBlocks, double coverage)> Contents = new ();
       StringBuilder lines = new ();
+      string path = Directory.GetCurrentDirectory ()[0..^3];
       foreach (var file in files) {
          var fBlocks = mBlocks.Where (a => a.File == file);
          var fBlocksCount = fBlocks.Count ();
          var cBlocksCount = fBlocks.Where (a => hits[a.Id] > 0).Count ();
          double coverage = Math.Round (100.0 * cBlocksCount / fBlocksCount, 1);
-         string path = Directory.GetCurrentDirectory ()[0..^3];
          Contents.Add (new (Path.GetFileName (file), fBlocksCount, cBlocksCount, coverage));
       }
       Contents = Contents.OrderBy (i => i.Item4).ToList ();
